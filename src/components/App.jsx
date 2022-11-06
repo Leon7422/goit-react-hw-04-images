@@ -55,7 +55,7 @@ export class App extends React.Component {
         {/* alltime */}
         <SearchBar
           onSubmitForm={this.onSubmitForm}
-          querry={this.state.querry}
+          actualQuerry={this.state.querry}
         />
 
         {/* pending */}
