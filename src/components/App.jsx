@@ -1,84 +1,72 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { SearchBar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 import { LoaderSpinner } from './Loader/Loader';
 import { LoadMoreButton } from './LoadMoreButton/LoadMoreButton';
 import { fetchPhotos } from './Services/PixabyApi';
 
-export class App extends React.Component {
-  state = {
-    page: 1,
-    querry: null,
-    photos: [],
-    status: 'idle',
-  };
+export const App = () => {
+  const [page, setPage] = useState(1);
+  const [querry, setQuerry] = useState(null);
+  const [photos, setPhotos] = useState([]);
+  const [status, setStatus] = useState('idle');
 
-  componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.querry !== this.state.querry ||
-      prevState.page !== this.state.page
-    ) {
-      this.setState({ status: 'pending' });
-      fetchPhotos(this.state.querry, this.state.page)
-        .then(data => {
-          if (data.data.hits.length < 1) {
-            console.log('ERROR');
-            return Promise.reject(new Error('We can not find anything'));
-          }
-
-          return this.setState(prevState => ({
-            status: 'resolved',
-            photos: [...prevState.photos, ...data.data.hits],
-          }));
-        })
-        .catch(e => this.setState({ status: 'rejected' }));
+  useEffect(() => {
+    if (querry === null) {
+      return;
     }
-  }
 
-  onSubmitForm = querry => {
-    this.setState({ photos: [] });
+    setStatus('pending');
+    fetchPhotos(querry, page)
+      .then(data => {
+        if (data.data.hits.length < 1) {
+          console.log('ERROR');
+          return Promise.reject(new Error('We can not find anything'));
+        }
 
-    this.setState(querry);
+        setStatus('resolved');
+        setPhotos([...photos, ...data.data.hits]);
+      })
+      .catch(e => setStatus('rejected'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [querry, page]);
+
+  const onSubmitForm = ({ querry, page }) => {
+    setPhotos([]);
+
+    setQuerry(querry);
+    setPage(page);
   };
 
-  loadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const loadMore = () => {
+    setPage(prevQuerry => prevQuerry + 1);
   };
 
-  render() {
-    const { status } = this.state;
+  return (
+    <>
+      {/* alltime */}
+      <SearchBar onSubmitForm={onSubmitForm} actualQuerry={querry} />
 
-    return (
-      <>
-        {/* alltime */}
-        <SearchBar
-          onSubmitForm={this.onSubmitForm}
-          actualQuerry={this.state.querry}
-        />
+      {/* pending */}
+      {status === 'pending' && (
+        <>
+          <ImageGallery data={photos} />
+          <LoaderSpinner />
+        </>
+      )}
 
-        {/* pending */}
-        {status === 'pending' && (
-          <>
-            <ImageGallery data={this.state.photos} />
-            <LoaderSpinner />
-          </>
-        )}
+      {/* resolved */}
+      {status === 'resolved' && (
+        <>
+          <ImageGallery data={photos} />
+          <LoadMoreButton loadMore={loadMore} />
+        </>
+      )}
 
-        {/* resolved */}
-        {status === 'resolved' && (
-          <>
-            <ImageGallery data={this.state.photos} />
-            <LoadMoreButton loadMore={this.loadMore} />
-          </>
-        )}
-
-        {/* rejected */}
-        {status === 'rejected' && (
-          <div>Sorry, we can not find anything! Please retry your search</div>
-        )}
-      </>
-    );
-  }
-}
+      {/* rejected */}
+      {status === 'rejected' && (
+        <div>Sorry, we can not find anything! Please retry your search</div>
+      )}
+    </>
+  );
+};
